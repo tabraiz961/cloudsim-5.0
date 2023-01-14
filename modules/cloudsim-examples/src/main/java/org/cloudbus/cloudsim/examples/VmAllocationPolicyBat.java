@@ -41,8 +41,28 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
  */
 public class VmAllocationPolicyBat extends VmAllocationPolicy {
 
+	/** The map between each VM and its allocated host.
+         * The map key is a VM UID and the value is the allocated host for that VM. */
+	private Map<String, Host> vmTable;
+
+	/** The map between each VM and the number of Pes used. 
+         * The map key is a VM UID and the value is the number of used Pes for that VM. */
+	private Map<String, Integer> usedPes;
+
+	/** The number of free Pes for each host from {@link #getHostList() }. */
+	private List<Integer> freePes;
+
 	public VmAllocationPolicyBat(List<? extends Host> list) {
 		super(list);
+
+		setFreePes(new ArrayList<Integer>());
+		for (Host host : getHostList()) {
+			getFreePes().add(host.getNumberOfPes());
+
+		}
+
+		setVmTable(new HashMap<String, Host>());
+		setUsedPes(new HashMap<String, Integer>());
 	}
 	@Override
 	public boolean allocateHostForVm(Vm vm) {
