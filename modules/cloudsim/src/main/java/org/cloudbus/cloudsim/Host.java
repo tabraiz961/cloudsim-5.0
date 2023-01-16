@@ -28,17 +28,17 @@ import org.cloudbus.cloudsim.provisioners.RamProvisioner;
 public class Host {
 
 
-	public double totalCPU=0;
-	public double utilizedCPU=0;	
-	public double maxPower=0;
-	public double minPower=0;
-	public double totalMem=0;
-	public double utilizedMem=0;
-	public double totalBW=0;
-	public double utilizedBw=0;
-	public double sla=0;
-	public double ResourceRemainingRate=0;
-	public double PowerConsumption=0;
+	// public double totalCPU=0;
+	// public double utilizedCPU=0;	
+	// public double maxPower=0;
+	// public double minPower=0;
+	// public double totalMem=0;
+	// public double utilizedMem=0;
+	// public double totalBW=0;
+	// public double utilizedBw=0;
+	// public double sla=0;
+	// public double ResourceRemainingRate=0;
+	// public double PowerConsumption=0;
 	/** The id of the host. */
 	private int id;
 
