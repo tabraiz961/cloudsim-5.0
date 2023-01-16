@@ -37,6 +37,7 @@ import java.util.Random;
 import org.cloudbus.cloudsim.VmAllocationPolicy;
 import org.cloudbus.cloudsim.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.power.PowerHost;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
@@ -67,11 +68,25 @@ public class VmAllocationPolicyBat extends VmAllocationPolicy {
 	private  double PR_MIN;
 	private  double PR_MAX; 
 	private  int D = 10;
-	private List<Host> hosts;
+	private List<PowerHost> hosts;
 	private  Random rand = new Random();
 
+	public  double getSla(double cpu_utilized, double cpu_total) {
+        
+        double cpu_utilize_r = cpu_utilized / cpu_total;
+        
+        // Sla for a single node
+        double sla = 1/(1+Math.exp(cpu_utilize_r - 0.9));
+        return sla;
+    }
+    public  double getResourceRemainingRate(double cpu_utilized, double cpu_total, double mem_utilized, double mem_total, double bw_utilized, double bw_total) {
 
-	public void BatAlgo(List<Host> hosts, int MAX, double L_MIN, double L_MAX, double PR_MIN, double PR_MAX){
+        return (1-(cpu_utilized/cpu_total)) * (1-(mem_utilized/mem_total)) * (1-(bw_utilized/bw_total));
+    }
+    public  double getPowerConsumption(double cpu_utilized, double cpu_total,double p_min, double p_max) {
+        return (((cpu_utilized/cpu_total) / (p_min +(p_max - p_min) * (cpu_utilized/cpu_total)))* p_max);
+    }
+	public void BatAlgo(List<PowerHost> hosts, int MAX, double L_MIN, double L_MAX, double PR_MIN, double PR_MAX){
 		this.hosts = hosts;
 		this.BATS = hosts.size();
 		this.MAX = MAX;
@@ -109,10 +124,24 @@ public class VmAllocationPolicyBat extends VmAllocationPolicy {
 
 		// Initialize POP_SOL
 		for ( int i = 0; i < BATS; i++ ){
+			PowerHost host = hosts.get(i);
+			double usedStorage = 0;
+			List<Vm> vmList = host.getVmList();
+			for (Vm vm : vmList) {
+				usedStorage += vm.getSize();
+			}
+			
+			// For SLA, power Consumption, RRR 
+			double cpu_utilized = host.getTotalMips() - host.getAvailableMips();
+			double usedMips = host.getTotalMips() - host.getAvailableMips();
+			double cpuUtilization = usedMips / host.getTotalMips();
+			double sla = this.getSla(cpu_utilized, host.getTotalMips() );
+			double rRR = this.getResourceRemainingRate(cpu_utilized, host.getTotalMips(), host.getRamProvisioner().getUsedRam(),host.getRamProvisioner().getRam(),host.getBwProvisioner().getUsedBw(),host.getBwProvisioner().getBw() );
+			double pC = this.getPowerConsumption(host.getPowerModel().getPower(cpuUtilization),host.getMaxPower(),0,host.getMaxPower() );
 			for ( int j = 0; j < D; j++ ){
 				// this.POP_SOL[i][j] = lb[0][j] + (ub[0][j] - lb[0][j]) * rand.nextDouble();
-				// For SLA, power Consumption, RRR 
-				this.POP_SOL[i][j] = 0.1 * rand.nextDouble() * 3; 
+
+				this.POP_SOL[i][j] = 0.1 + rand.nextDouble() * (sla + rRR + pC); 
 			}
 			this.FIT[i] = objective(POP_SOL[i], i);
 		}
@@ -133,9 +162,6 @@ public class VmAllocationPolicyBat extends VmAllocationPolicy {
     // Can be replaced with ROSENBROCK 3d FUNCTION (https://www.sfu.ca/~ssurjano/rosen.html) easy valley but difficult global minima
 	private double objective(double[] Xi, int index){
 		double sum = 0.0;
-		Host temp = hosts.get(index);
-		// temp.getAvailableMips();
-		// temp.getRamProvisioner().getAvailableRam()
 		
 		for ( int i = 0; i < Xi.length; i++ ){
 			sum = sum + Xi[i] * Xi[i];
@@ -202,7 +228,7 @@ public class VmAllocationPolicyBat extends VmAllocationPolicy {
 				int moreFree = Integer.MIN_VALUE;
 				int idx = -1;
 
-				this.BatAlgo(getHostList(), 1000, 0.0, 1.0, 0.0, 1.0);
+				this.BatAlgo(this.<PowerHost>getHostList(), 1000, 0.0, 1.0, 0.0, 1.0);
 				idx  = this.startBat();
 				// Original Code
 				// // we want the host with less pes in use
